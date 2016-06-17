@@ -35,7 +35,7 @@ class ListGraphs extends noflo.Component
       @auto = String(data) is 'true'
 
   subscribe: (runtime) ->
-    runtime.on 'graph', (message) =>
+    onGraph = (message) =>
       return unless runtime is @runtime
       if message.command == 'graph'
         @graphs.push message.payload.description
@@ -46,9 +46,15 @@ class ListGraphs extends noflo.Component
         @outPorts.graphs.endGroup()
         @outPorts.graphs.disconnect()
         @runtimes = []
-    runtime.on 'disconnected',  =>
+        @runtime.removeListener 'graph', onGraph
+
+    onDisconnect = =>
       return unless runtime is @runtime
       @graphs = []
+      @runtime.removeListener 'disconnect', onDisconnect
+
+    runtime.on 'graph', onGraph
+    runtime.on 'disconnected',  onDisconnect
 
     do @list if @auto
 
@@ -58,6 +64,15 @@ class ListGraphs extends noflo.Component
       @outPorts.error.disconnect()
       return
     @graphs = []
-    @runtime.sendGraph 'list', ''
+
+    if @runtime.isConnected()
+      @runtime.sendGraph 'list', ''
+
+    else
+      onRuntimeConnected = ->
+        @runtime.sendGraph 'list', ''
+        @runtime.removeListener 'capabilities', onRuntimeConnected
+
+      @runtime.on 'capabilities', onRuntimeConnected
 
 exports.getComponent = -> new ListGraphs
