@@ -18,6 +18,10 @@ class SendGraphChanges extends noflo.Component
         datatype: 'object'
         description: 'Graph to listen to'
         required: true
+      remote_transaction_id:
+        datatype: 'string'
+        description: 'Transaction ID of remote updates to graph'
+        required: false
     @outPorts = new noflo.OutPorts
       queued:
         datatype: 'int'
@@ -41,6 +45,7 @@ class SendGraphChanges extends noflo.Component
       @changes = []
       @graph = graph
       do @subscribe
+    @inPorts.on 'remote_transaction_id', 'data', (@remoteTransactionId) =>
 
   subscribe: ->
     return if @subscribed
@@ -254,11 +259,16 @@ class SendGraphChanges extends noflo.Component
     else
       @replaceChange @changesStates[key], 'changegroup', metadata
 
-  send: =>
+  send: (transactionId, metadata) =>
     return unless @runtime
     while @changes.length
-      change = @changes.shift()
-      @runtime.sendGraph change.topic, change.payload
+      if @remoteTransactionId is transactionId
+        @runtime.sendGraph 'receipt',
+          message_id: metadata.id
+          success: true
+      else
+        change = @changes.shift()
+        @runtime.sendGraph change.topic, change.payload
     @outPorts.sent.beginGroup @graphIdentifier() if @graph
     @outPorts.sent.send true
     @outPorts.sent.endGroup() if @graph
