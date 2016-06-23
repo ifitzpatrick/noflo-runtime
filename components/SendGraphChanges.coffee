@@ -262,12 +262,12 @@ class SendGraphChanges extends noflo.Component
   send: (transactionId, metadata) =>
     return unless @runtime
     while @changes.length
+      change = @changes.shift()
       if @remoteTransactionId is transactionId
         @runtime.sendGraph 'receipt',
           message_id: metadata.id
           success: true
       else
-        change = @changes.shift()
         @runtime.sendGraph change.topic, change.payload
     @outPorts.sent.beginGroup @graphIdentifier() if @graph
     @outPorts.sent.send true
